@@ -172,6 +172,37 @@ const NOT_CONFIGURED_HTML = `<!DOCTYPE html>
   </body>
 </html>`;
 
+function oauthFailureHtml(title: string, body: string): string {
+  const escape = (value: string) =>
+    value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  return `<!DOCTYPE html>
+<html lang="en">
+  <head><meta charset="UTF-8"><title>${escape(title)}</title></head>
+  <body style="font-family: system-ui, -apple-system, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #f5f5f5;">
+    <div style="max-width: 560px; padding: 2rem; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center;">
+      <h1 style="color: #1DB954; font-size: 1.5rem; margin: 0 0 1rem 0;">${escape(title)}</h1>
+      <p style="color: #555; line-height: 1.6; margin: 0 0 1.5rem 0; white-space: pre-wrap;">${escape(body)}</p>
+      <button onclick="window.close()" style="padding: 0.5rem 1.5rem; background: #1DB954; color: white; border: none; border-radius: 4px; font-size: 1rem; cursor: pointer;">Close</button>
+    </div>
+  </body>
+</html>`;
+}
+
+function spotifyOAuthErrorPage(err: unknown): Response {
+  const message = err instanceof Error ? err.message : String(err);
+  const premiumRequired = /premium subscription required/i.test(message);
+  const title = premiumRequired ? "Spotify Premium Required" : "Spotify Connection Failed";
+  const body = premiumRequired
+    ? "Spotify Development Mode requires an active Premium subscription on the Developer Dashboard app owner account. Upgrade that Spotify account to Premium, wait for it to propagate (can take a few hours), then return to Samabrains OS and connect Spotify again.\n\nDetails: " +
+      message
+    : "Spotify authorization could not be completed. Return to Samabrains OS and try connecting again.\n\nDetails: " +
+      message;
+  return new Response(oauthFailureHtml(title, body), {
+    status: 400,
+    headers: { "Content-Type": "text/html; charset=utf-8" },
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Small helpers
 
@@ -452,7 +483,13 @@ export default {
       const stub: DurableObjectStub<UserAccount> = ctx.exports.UserAccount.get(
         ctx.exports.UserAccount.idFromString(doId),
       );
-      const handoff = await stub.acceptAuthCode(code, oauthNonce);
+      let handoff: ConnectHandoff | null;
+      try {
+        handoff = await stub.acceptAuthCode(code, oauthNonce);
+      } catch (err) {
+        console.error("Spotify OAuth acceptAuthCode failed", err);
+        return spotifyOAuthErrorPage(err);
+      }
       if (!handoff) {
         return new Response(INVALID_LINK_HTML, { headers: { "Content-Type": "text/html; charset=utf-8" } });
       }

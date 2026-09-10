@@ -7023,11 +7023,17 @@ class OverseerImpl implements AgentHooks {
       }
 
       let sessionAffinity = await computeSessionAffinity(this.ctx.id.toString(), chatId);
+      let ownerProfileId = await this.getOwnerProfileId().catch(() => undefined);
       let chosenModel = getModel(
           this.env, aiModel.config, initiator, {
             sessionAffinity,
             userGateway: byokRouting,
-            metadata: { source: "chat", gadgetId: this.ctx.id.toString(), chatId },
+            metadata: {
+              source: "chat",
+              gadgetId: this.ctx.id.toString(),
+              chatId,
+              ...(ownerProfileId ? { userId: ownerProfileId } : {}),
+            },
           });
 
       let controller = liveChat.cancelController;
@@ -8294,8 +8300,14 @@ class OverseerImpl implements AgentHooks {
                             modelConfig: AiModelConfig,
                             initiator: AiChatAuthorInfo): Promise<void> {
     try {
+      let ownerProfileId = await this.getOwnerProfileId().catch(() => undefined);
       let model = getModel(this.env, modelConfig, initiator, {
-        metadata: { source: "thread-title", gadgetId: this.ctx.id.toString(), chatId },
+        metadata: {
+          source: "thread-title",
+          gadgetId: this.ctx.id.toString(),
+          chatId,
+          ...(ownerProfileId ? { userId: ownerProfileId } : {}),
+        },
       });
 
       let result = await completeText(model, {
@@ -8351,8 +8363,14 @@ class OverseerImpl implements AgentHooks {
         }
       }
 
+      let ownerProfileId = await this.getOwnerProfileId().catch(() => undefined);
       let model = getModel(this.env, modelConfig, initiator, {
-        metadata: { source: "gadget-title", gadgetId: this.ctx.id.toString(), chatId },
+        metadata: {
+          source: "gadget-title",
+          gadgetId: this.ctx.id.toString(),
+          chatId,
+          ...(ownerProfileId ? { userId: ownerProfileId } : {}),
+        },
       });
 
       let gadgetTitle = await completeText(model, {

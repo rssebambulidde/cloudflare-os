@@ -35,6 +35,9 @@ import { bridgePdfAttachments } from "./chat-attachment-pdf.js";
 type GatewayMetadata = {
   // Stable Gadgets user identifier for attribution.
   user: string;
+  // Samabrains / Workshop profile id (email) for AI Gateway User Insights and spend limits.
+  // Distinct from `user`, which historically carried the initiator (often the model id).
+  userId?: string;
   // Gadgets execution context, present when the call is associated with a gadget operation.
   source?: GatewayMetadataContext["source"];
   gadgetId?: string;
@@ -47,6 +50,8 @@ type GatewayMetadataContext = {
   source: "chat" | "thread-title" | "gadget-title" | "model-binding";
   gadgetId?: string;
   chatId?: number;
+  /** Workshop profile id (email) for gateway User Insights attribution. */
+  userId?: string;
 };
 
 type ModelRoutingOptions = {
@@ -109,6 +114,7 @@ function buildMetadata(initiator: AiChatAuthorInfo, context?: GatewayMetadataCon
     metadata.source = context.source;
     if (context.gadgetId) metadata.gadgetId = context.gadgetId;
     if (context.chatId !== undefined) metadata.chatId = context.chatId;
+    if (context.userId) metadata.userId = context.userId;
   }
   if (initiator.type === "gadget") metadata.automated = true;
   return metadata;

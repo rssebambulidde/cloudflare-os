@@ -61,13 +61,13 @@ function decodeSelection(value: string): SelectionType {
 }
 
 // Build the flat list of options for the Select dropdown.
-function buildOptions(gatewayMode: boolean, enabledProviders: Set<string> | null) {
+// Personal BYOK always lists every supported provider. In gateway mode, suggested catalog models
+// are already built-in, so only the "Other <provider>..." (bring-your-own-key) rows appear.
+function buildOptions(gatewayMode: boolean) {
   const options: { value: string; label: string; provider: string }[] = []
   const providerOrder = Object.keys(SUGGESTED_MODELS) as AiModelProvider[]
 
   for (const provider of providerOrder) {
-    if (enabledProviders && !enabledProviders.has(provider)) continue
-
     // In gateway mode, suggested models are already built-in, so don't list them.
     if (!gatewayMode) {
       for (const [modelId, model] of Object.entries(SUGGESTED_MODELS[provider])) {
@@ -110,9 +110,6 @@ export default function AddModelModal({ visible, onCancel, onSuccess, authentica
   const [advancedOpen, setAdvancedOpen] = useState(false)
 
   const gatewayMode = aiConfig?.enabled === true
-  const enabledProviders: Set<string> | null = gatewayMode
-    ? new Set(aiConfig.enabledProviders)
-    : null
 
   // Reset all state when dialog closes
   useEffect(() => {
@@ -161,7 +158,8 @@ export default function AddModelModal({ visible, onCancel, onSuccess, authentica
 
     const isOllama = selection?.provider === 'ollama'
     const isCloudflare = selection?.provider === 'cloudflare'
-    const showCredentials = !gatewayMode
+    // Personal BYOK always collects credentials, including when a shared AI Gateway catalog is on.
+    const showCredentials = true
 
     if (showCredentials && selection && !isOllama && !apiToken.trim()) {
       newErrors.apiToken = 'Please enter your API token'
@@ -197,9 +195,9 @@ export default function AddModelModal({ visible, onCancel, onSuccess, authentica
       const config: AiModelConfig = {
         provider: selection!.provider,
         model: finalModelId,
-        apiToken: gatewayMode ? '' : apiToken.trim(),
-        ...(!gatewayMode && accountId.trim() && { accountId: accountId.trim() }),
-        ...(!gatewayMode && apiUrl.trim() && { apiUrl: apiUrl.trim() }),
+        apiToken: apiToken.trim(),
+        ...(accountId.trim() && { accountId: accountId.trim() }),
+        ...(apiUrl.trim() && { apiUrl: apiUrl.trim() }),
       }
 
       await authenticatedApi.addModel(profile, config)
@@ -213,12 +211,12 @@ export default function AddModelModal({ visible, onCancel, onSuccess, authentica
     }
   }
 
-  const options = buildOptions(gatewayMode, enabledProviders)
+  const options = buildOptions(gatewayMode)
   const showCustomFields = selection?.type === 'custom'
   const example = selection ? exampleModel(selection.provider) : null
   const isOllama = selection?.provider === 'ollama'
   const isCloudflare = selection?.provider === 'cloudflare'
-  const showCredentials = !gatewayMode
+  const showCredentials = true
 
   // Group options by provider for rendering with visual separators.
   const groupedOptions: { provider: string; items: typeof options }[] = []

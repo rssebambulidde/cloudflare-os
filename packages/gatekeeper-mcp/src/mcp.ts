@@ -112,11 +112,16 @@ export default {
           if (!(await account.isAwaitingSelection(initiationNonce))) {
             return htmlResponse(INVALID_LINK_HTML, 400);
           }
-          return htmlResponse(connectFormHtml(path));
+          return htmlResponse(connectFormHtml(path, undefined, `${getBaseUrl(env)}/oauth`));
         }
         const form = await request.formData();
+        const clientId = String(form.get("client_id") ?? "").trim();
+        const clientSecret = String(form.get("client_secret") ?? "").trim();
+        const staticOAuth = clientId && clientSecret
+          ? { client_id: clientId, client_secret: clientSecret }
+          : null;
         return continueConnect(
-          account, initiationNonce, String(form.get("url") ?? ""), env, path);
+          account, initiationNonce, String(form.get("url") ?? ""), env, path, staticOAuth);
       },
     });
   },
@@ -130,13 +135,14 @@ async function continueConnect(
   endpointUrl: string | null,
   env: Env,
   formPath: string,
+  staticOAuthClient: { client_id: string; client_secret: string } | null = null,
 ): Promise<Response> {
   let target: ConnectedServer | null = null;
 
   if (endpointUrl !== null) {
     const validated = validateCustomEndpoint(env, endpointUrl);
     if (!validated.ok) {
-      return htmlResponse(connectFormHtml(formPath, validated.reason), 400);
+      return htmlResponse(connectFormHtml(formPath, validated.reason, `${getBaseUrl(env)}/oauth`), 400);
     }
     // `serverName` is a placeholder until the handshake reports the server's own name, and `auth` is
     // a guess that `beginConnect` corrects to `"none"` if the endpoint turns out to be public.
@@ -151,11 +157,11 @@ async function continueConnect(
 
   let outcome: ConnectOutcome;
   try {
-    outcome = await account.beginConnect(initiationNonce, target);
+    outcome = await account.beginConnect(initiationNonce, target, staticOAuthClient);
   } catch (err) {
     logger.warn("connect failed", { event: "connect.failed", error: err });
     return htmlResponse(connectFormHtml(
-      formPath, err instanceof Error ? err.message : String(err)), 502);
+      formPath, err instanceof Error ? err.message : String(err), `${getBaseUrl(env)}/oauth`), 502);
   }
 
   if (outcome.kind === "invalid") return htmlResponse(INVALID_LINK_HTML, 400);

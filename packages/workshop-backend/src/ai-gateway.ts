@@ -108,9 +108,9 @@ export class AiGatewayConfig {
           config: {
             provider: provider as AiModelConfig["provider"],
             model: modelId,
-            // apiToken and apiUrl are ignored when AI Gateway mode is active -- getModel()
-            // reads the real values from env. We set them to empty strings here to satisfy
-            // the type.
+            // Empty apiToken marks a shared catalog model: getModel() routes through the
+            // platform AI Gateway. Personal /providers models store a real apiToken and use
+            // direct provider credentials instead.
             apiToken: "",
           },
         };

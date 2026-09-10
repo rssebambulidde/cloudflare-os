@@ -577,7 +577,12 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
 
   async addModel(profile: AiChatAuthorInfo, config: AiModelConfig): Promise<void> {
     let gwConfig = getAiGatewayConfig(this.env);
-    if (gwConfig && !gwConfig.providers.has(config.provider)) {
+    // Credentialed personal BYOK (token, or Ollama with apiUrl) may use any supported provider.
+    // Credential-less adds are only allowed for providers on the shared AI Gateway catalog.
+    let credentialed = config.provider === "ollama"
+      ? !!(config.apiUrl && config.apiUrl.trim())
+      : !!(config.apiToken && config.apiToken.trim());
+    if (gwConfig && !credentialed && !gwConfig.providers.has(config.provider)) {
       throw new Error(`Provider "${config.provider}" is not available in AI Gateway mode.`);
     }
 

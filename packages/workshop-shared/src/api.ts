@@ -887,7 +887,7 @@ export const MAX_SITE_NAME_LENGTH = 40;
  * What this deployment calls itself when the admin has not set a custom `siteName`. Also the
  * product's own name, so it appears in prose the server and UI address to the user.
  */
-export const DEFAULT_SITE_NAME = "Cloudflare OS";
+export const DEFAULT_SITE_NAME = "Samabrains OS";
 
 /**
  * The name to display for this deployment. Accepts an unset or not-yet-loaded `siteName` so both
@@ -1254,14 +1254,25 @@ const SUGGESTED_MODEL_CATALOG = {
   "anthropic": {
     // TODO: Include Fable -- but we need an admin option to disable it, since many orgs don't
     //   allow it for ZDR reasons. It's sort of overkill for building gadgets anyway.
-    "claude-opus-5": {name: "Claude Opus 5", contextWindow: 1000000},
-    "claude-sonnet-5": {name: "Claude Sonnet 5", contextWindow: 1000000},
-    "claude-haiku-4-5": {name: "Claude Haiku 4.5", contextWindow: 200000},
+    "claude-opus-5": {name: "Claude Opus 5", contextWindow: 1000000, outputLimit: 128000},
+    "claude-sonnet-5": {name: "Claude Sonnet 5", contextWindow: 1000000, outputLimit: 128000},
+    "claude-haiku-4-5": {name: "Claude Haiku 4.5", contextWindow: 200000, outputLimit: 64000},
+    "claude-opus-4-8": {name: "Claude Opus 4.8", contextWindow: 1000000, outputLimit: 128000},
+    "claude-opus-4-6": {name: "Claude Opus 4.6", contextWindow: 1000000, outputLimit: 128000},
+    "claude-sonnet-4-6": {name: "Claude Sonnet 4.6", contextWindow: 1000000, outputLimit: 128000},
+    "claude-sonnet-4-5": {name: "Claude Sonnet 4.5", contextWindow: 1000000, outputLimit: 64000},
   },
   "openai": {
     "gpt-5.6-sol": {name: "GPT 5.6 Sol", contextWindow: 1050000, outputLimit: 128000},
-    "gpt-5.6-luna": {name: "GPT 5.6 Luna", contextWindow: 1050000, outputLimit: 128000},
     "gpt-5.6-terra": {name: "GPT 5.6 Terra", contextWindow: 1050000, outputLimit: 128000},
+    "gpt-5.6-luna": {name: "GPT 5.6 Luna", contextWindow: 1050000, outputLimit: 128000},
+    "gpt-5.5": {name: "GPT 5.5", contextWindow: 272000, outputLimit: 128000},
+    "gpt-5.4": {name: "GPT 5.4", contextWindow: 272000, outputLimit: 128000},
+    "gpt-5.4-mini": {name: "GPT 5.4 mini", contextWindow: 400000, outputLimit: 128000},
+    "gpt-5.4-nano": {name: "GPT 5.4 nano", contextWindow: 400000, outputLimit: 128000},
+    "gpt-5.1": {name: "GPT 5.1", contextWindow: 400000, outputLimit: 128000},
+    "gpt-5-mini": {name: "GPT 5 Mini", contextWindow: 400000, outputLimit: 128000},
+    "gpt-5-nano": {name: "GPT 5 Nano", contextWindow: 400000, outputLimit: 128000},
   },
   "google": {
     "gemini-3.6-flash": {name: "Gemini 3.6 Flash", contextWindow: 1048576},

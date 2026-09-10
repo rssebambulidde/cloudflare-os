@@ -365,8 +365,15 @@ export function getModel(env: Cloudflare.Env, config: AiModelConfig,
         options.sessionAffinity);
   }
 
-  // Otherwise: when a platform AI Gateway is configured, route through it (platform-funded free
-  // tier). The config's apiToken/apiUrl are ignored in that mode.
+  // Personal provider keys (/providers): use the credentials on the model config even when a
+  // platform AI Gateway is configured. Shared catalog models resolve with an empty apiToken and
+  // continue through the gateway path below. Ollama is keyed by apiUrl (token optional).
+  if (config.apiToken || (config.provider === "ollama" && config.apiUrl)) {
+    return getModelDirect(config, options.sessionAffinity);
+  }
+
+  // Otherwise: when a platform AI Gateway is configured, route through it (platform-funded shared
+  // catalog). Shared models carry an empty apiToken from resolveModel().
   let gwConfig = getAiGatewayConfig(env);
   if (gwConfig) {
     return getModelViaGateway(gwConfig, config, initiator, options);

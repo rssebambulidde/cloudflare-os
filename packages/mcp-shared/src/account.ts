@@ -78,6 +78,16 @@ export type ConnectedServer = {
 };
 
 /**
+ * Pre-registered OAuth client credentials for servers that reject open Dynamic Client
+ * Registration (e.g. ZoomInfo MCP: only allowlisted vendors may DCR; custom clients need a
+ * DevPortal MCP App's client_id / client_secret).
+ */
+export type StaticOAuthClient = {
+  client_id: string;
+  client_secret: string;
+};
+
+/**
  * Which server record a `beginConnect` should proceed with, or null to refuse the attempt.
  *
  * The endpoint is immutable after the first connect: a reconnect re-authorizes the server this
@@ -353,6 +363,7 @@ export abstract class McpAccountBase<E extends AccountEnv, P = unknown>
    */
   async beginConnect(
     initiationNonce: string, target: ConnectedServer | null,
+    staticOAuthClient?: StaticOAuthClient | null,
   ): Promise<ConnectOutcome> {
     const existing = this.server();
     const server = resolveConnectTarget(existing, target);
@@ -451,6 +462,14 @@ export abstract class McpAccountBase<E extends AccountEnv, P = unknown>
       // stores.
       const oauthServer: ConnectedServer = { ...server, auth: "oauth" };
       if (!reconnect) this.ctx.storage.kv.put("server", oauthServer);
+      if (staticOAuthClient?.client_id && staticOAuthClient.client_secret) {
+        // Skip DCR: ZoomInfo (and similar) only accept registration from allowlisted vendors.
+        const clientKey = reconnect ? RECONNECT_CLIENT_KEY : "oauthClient";
+        this.ctx.storage.kv.put<StoredOAuthClientInformation>(clientKey, {
+          client_id: staticOAuthClient.client_id,
+          client_secret: staticOAuthClient.client_secret,
+        });
+      }
       try {
         return await this.beginOAuth(oauthServer, err.resourceMetadataUrl, generation, reconnect);
       } catch (oauthErr) {
@@ -495,6 +514,9 @@ export abstract class McpAccountBase<E extends AccountEnv, P = unknown>
     const clientKey = reconnect ? RECONNECT_CLIENT_KEY : "oauthClient";
     const discoveryKey = reconnect ? RECONNECT_DISCOVERY_KEY : "oauthDiscovery";
 
+    const existingClient = this.ctx.storage.kv.get<StoredOAuthClientInformation>(clientKey);
+    const hasClientSecret = typeof existingClient?.client_secret === "string" &&
+      existingClient.client_secret.length > 0;
     return {
       redirectUrl: `${this.baseUrl()}/oauth`,
       clientMetadata: {
@@ -502,7 +524,8 @@ export abstract class McpAccountBase<E extends AccountEnv, P = unknown>
         redirect_uris: [`${this.baseUrl()}/oauth`],
         grant_types: ["authorization_code", "refresh_token"],
         response_types: ["code"],
-        token_endpoint_auth_method: "none",
+        // Public PKCE by default; confidential clients (ZoomInfo MCP App) use client_secret_post.
+        token_endpoint_auth_method: hasClientSecret ? "client_secret_post" : "none",
       },
       clientInformation: context => {
         current();
@@ -616,12 +639,16 @@ export abstract class McpAccountBase<E extends AccountEnv, P = unknown>
     try {
       let result: Awaited<ReturnType<typeof auth>>;
       try {
+        // ZoomInfo MCP (and some Okta-backed servers) advertise an AS URL whose metadata
+        // `issuer` is a different host (e.g. okta-login.zoominfo.com vs mcp.zoominfo.com).
+        // RFC 8414 §3.3 would reject that; the MCP SDK allows skipping for known misconfigs.
         const provider =
           this.oauthProvider(server, generation, reconnect, url => { redirectUrl = url; });
         result = await auth(provider, {
           serverUrl: server.endpoint,
           resourceMetadataUrl: resourceMetadataUrl ? new URL(resourceMetadataUrl) : undefined,
           fetchFn: sdkFetch(this.fetchOptions()),
+          skipIssuerMetadataValidation: true,
         });
       } catch (err) {
         throw this.redactedOAuthError(err, reconnect);
@@ -690,6 +717,7 @@ export abstract class McpAccountBase<E extends AccountEnv, P = unknown>
         authorizationCode: code,
         iss: issuer,
         fetchFn: sdkFetch(this.fetchOptions()),
+        skipIssuerMetadataValidation: true,
       });
     } catch (err) {
       throw this.redactedOAuthError(err, reconnect, code);

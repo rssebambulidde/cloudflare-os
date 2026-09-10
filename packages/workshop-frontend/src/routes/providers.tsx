@@ -252,8 +252,8 @@ function ProvidersPage() {
                 <Lightning size={15} className="mt-px shrink-0 text-kumo-brand" />
                 <span>
                   <strong className="font-medium text-kumo-default">AI Gateway mode:</strong> built-in
-                  models are managed by your deployment. You can still add custom models with your own
-                  API tokens.
+                  models are managed by your deployment and billed to the company gateway. Add a
+                  provider below with your own API token to use personal BYOK models (billed to you).
                 </span>
               </Notice>
             )}

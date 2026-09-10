@@ -23,13 +23,14 @@ const GADGET_INITIATOR: AiChatAuthorInfo = {
 const ANTHROPIC_CONFIG: AiModelConfig = {
   provider: "anthropic",
   model: "claude-sonnet-4-5",
-  apiToken: "ignored-in-gateway-mode",
+  // Empty token = shared catalog / platform gateway path. Non-empty prefers getModelDirect.
+  apiToken: "",
 };
 
 const WORKERS_AI_CONFIG: AiModelConfig = {
   provider: "cloudflare",
   model: "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
-  apiToken: "ignored-in-gateway-mode",
+  apiToken: "",
 };
 
 function env(overrides: Partial<Cloudflare.Env> = {}): Cloudflare.Env {
@@ -110,7 +111,7 @@ describe("getModel AI Gateway routing", () => {
     const handle = getModel(env(), {
       provider: "google",
       model: "gemini-2.5-flash",
-      apiToken: "ignored-in-gateway-mode",
+      apiToken: "",
     }, INITIATOR);
 
     expect(handle.model.api).toBe("google-generative-ai");
@@ -367,7 +368,7 @@ describe("getModel AI Gateway binding transport", () => {
     const googleHandle = getModel(hybridEnv, {
       provider: "google",
       model: "gemini-2.5-flash",
-      apiToken: "ignored-in-gateway-mode",
+      apiToken: "",
     }, INITIATOR);
     expect(googleHandle.model.baseUrl).toBe(
         "https://gateway.ai.cloudflare.com/v1/gateway-account-id/platform-gateway/" +
@@ -393,10 +394,27 @@ describe("getModel AI Gateway binding transport", () => {
     expect(() => getModel(bindingEnv(), {
       provider: "google",
       model: "gemini-2.5-flash",
-      apiToken: "ignored-in-gateway-mode",
+      apiToken: "",
     }, INITIATOR)).toThrow(
         'Provider "google" cannot use the Workers AI binding transport');
   });
+
+  it("uses personal API keys directly when a platform gateway is configured", async () => {
+    const handle = getModel(env(), {
+      provider: "anthropic",
+      model: "claude-sonnet-4-5",
+      apiToken: "user-anthropic-key",
+    }, INITIATOR);
+
+    expect(handle.model.api).toBe("anthropic-messages");
+    expect(handle.model.baseUrl).toBe("https://api.anthropic.com");
+    expect(handle.aiGatewayLogRoute).toBeUndefined();
+
+    const request = await captureRequest(handle);
+    expect(request.url).toBe("https://api.anthropic.com/v1/messages");
+    expect(request.headers.get("x-api-key")).toBe("user-anthropic-key");
+    expect(request.headers.get("cf-aig-authorization")).toBeNull();
+  }, 15000);
 
 });
 

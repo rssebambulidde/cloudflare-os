@@ -1171,6 +1171,11 @@ export type CloudflareUsageInfo = {
   connected: boolean;
   /** The connected account's AI Gateway credit balance (USD), or null if unknown/not connected. */
   balance: number | null;
+  /**
+   * Minimum AI Gateway balance (USD) required to continue via the user's own credits once the free
+   * tier is exhausted. Mirrors the server's MINIMUM_CLOUDFLARE_BALANCE (default $2).
+   */
+  minimumBalance?: number;
   accountId?: string;
   accountName?: string;
   /**

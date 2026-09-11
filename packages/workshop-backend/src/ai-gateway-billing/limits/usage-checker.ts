@@ -142,10 +142,12 @@ export async function getUsageInfo(
       remaining: 0,
       connected: false,
       balance: null,
+      minimumBalance: getMinimumCloudflareBalance(env),
     };
   }
 
   const limit = getDailyLlmCallLimit(env);
+  const minimumBalance = getMinimumCloudflareBalance(env);
   // These two reads are independent — run them together to halve latency on this UI polling path.
   const [quota, status] = await Promise.all([
     userStub.checkDailyLlmCount(limit),
@@ -161,6 +163,7 @@ export async function getUsageInfo(
     resetAt: quota.resetAt,
     connected: status.connected,
     balance: status.balance,
+    minimumBalance,
     accountId: status.accountId,
     accountName: status.accountName,
     needsAccountSelection: status.needsAccountSelection,

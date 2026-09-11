@@ -78,8 +78,10 @@ export async function listAccounts(token: string): Promise<CloudflareAccount[]> 
  * callers can distinguish "unknown" from a genuine $0 balance.
  */
 export async function fetchCreditBalance(token: string, accountId: string): Promise<number | null> {
+  // Current Cloudflare API: GET /accounts/{id}/ai-gateway/billing/credit-balance
+  // (supersedes the retired /ai-gateway-billing/credit_balance path).
   const result = await cfGet<{ balance?: number }>(
-    token, `/accounts/${accountId}/ai-gateway-billing/credit_balance`,
+    token, `/accounts/${accountId}/ai-gateway/billing/credit-balance`,
   );
   if (!result || typeof result.balance !== "number") return null;
   // The API reports the balance in cents.

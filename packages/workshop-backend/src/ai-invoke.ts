@@ -21,10 +21,13 @@ export function zeroUsage(): Usage {
 export class AgentTurnError extends Error {
   /** HTTP status of the failing request, when the handle observed a response for it. */
   readonly statusCode?: number;
+  /** AI Gateway log id from cf-aig-log-id when the failing response was observed. */
+  readonly aiGatewayLogId?: string;
 
-  constructor(message: string, statusCode?: number) {
+  constructor(message: string, statusCode?: number, aiGatewayLogId?: string) {
     super(message);
     this.statusCode = statusCode;
+    this.aiGatewayLogId = aiGatewayLogId;
   }
 }
 
@@ -40,6 +43,31 @@ export function httpStatusFromError(errorMessage: string, handle: ModelHandle)
   const match = /^(\d{3})\b/.exec(errorMessage.trim());
   if (match) return Number(match[1]);
   return handle.lastResponse?.status;
+}
+
+/**
+ * Enrich opaque provider/gateway failures (esp. empty-bodied 429s) with status + gateway log id
+ * so chat UI and turn logs are actionable without opening the dashboard.
+ */
+export function formatModelError(errorMessage: string, handle: ModelHandle): {
+  message: string;
+  statusCode?: number;
+  aiGatewayLogId?: string;
+} {
+  const statusCode = httpStatusFromError(errorMessage, handle);
+  const aiGatewayLogId = handle.lastResponse?.aiGatewayLogId;
+  let message = errorMessage.trim() || "The model request failed.";
+  const opaque429 = statusCode === 429
+      || /^429\b/.test(message)
+      || /\b429 status code\b/i.test(message);
+  if (opaque429 && /\(no body\)/i.test(message)) {
+    message = "429 from AI Gateway (empty body) — often gateway rate limit, spend limit, or "
+        + "Unified Billing throttling. Check AI Gateway → Settings / Logs.";
+  }
+  if (aiGatewayLogId && !message.includes(aiGatewayLogId)) {
+    message = `${message} (ai-gateway-log: ${aiGatewayLogId})`;
+  }
+  return { message, statusCode, aiGatewayLogId };
 }
 
 /**
@@ -71,8 +99,9 @@ export async function completeText(handle: ModelHandle, args: {
   if (message.stopReason === "error" || message.stopReason === "aborted") {
     // Surface a cancellation as the abort reason, like a directly-aborted request would.
     args.signal?.throwIfAborted();
-    const errorMessage = message.errorMessage ?? "The model request failed.";
-    throw new AgentTurnError(errorMessage, httpStatusFromError(errorMessage, handle));
+    const formatted = formatModelError(
+        message.errorMessage ?? "The model request failed.", handle);
+    throw new AgentTurnError(formatted.message, formatted.statusCode, formatted.aiGatewayLogId);
   }
   return message.content
       .filter(block => block.type === "text")

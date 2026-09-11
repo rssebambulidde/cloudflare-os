@@ -120,14 +120,21 @@ export default function OutOfCreditsModal({ open, onClose }: OutOfCreditsModalPr
                 Your Cloudflare connection has access to multiple accounts. Choose which one's AI
                 Gateway credits should be billed for usage beyond the free tier.
               </p>
+            ) : usage.balance !== null && usage.balance >= (usage.minimumBalance ?? 2) ? (
+              <p className="text-sm text-kumo-subtle">
+                Your Cloudflare account is connected with a balance of{' '}
+                <strong>${usage.balance.toFixed(2)}</strong>, which meets the minimum to continue.
+                Close this dialog and send another message — further usage is billed to your AI
+                Gateway credits.
+              </p>
             ) : (
               <p className="text-sm text-kumo-subtle">
                 Your Cloudflare account is connected
                 {usage.balance !== null && (
                   <> with a balance of <strong>${usage.balance.toFixed(2)}</strong></>
                 )}
-                , but it's below the minimum needed to continue. Add credits to your AI Gateway to
-                keep building now
+                , but it's below the ${(usage.minimumBalance ?? 2).toFixed(2)} minimum needed to
+                continue. Add credits to your AI Gateway to keep building now
                 {usage.resetAt ? (
                   <>
                     {' '}or wait — your free {usage.dailyLimit === 1 ? 'request resets' : 'requests reset'} at
@@ -184,6 +191,8 @@ export default function OutOfCreditsModal({ open, onClose }: OutOfCreditsModalPr
                 </>
               ) : needsSelection ? (
                 <Button variant="secondary" onClick={onClose}>Close</Button>
+              ) : usage.balance !== null && usage.balance >= (usage.minimumBalance ?? 2) ? (
+                <Button variant="primary" onClick={onClose}>Continue</Button>
               ) : (
                 <>
                   <Button variant="secondary" onClick={onClose}>Close</Button>

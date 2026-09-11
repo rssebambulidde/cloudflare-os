@@ -17,7 +17,7 @@ import { webFetch as webFetchImpl, WebFetchEnv, formatWebFetchResult } from "./w
 import { AgentCatalogSnapshot, formatAlwaysAvailableResourcesPrompt } from "./agent-catalog";
 import { formatInstanceInstructions } from "./admin-config";
 import type { AiGatewayLogRoute } from "./ai-gateway";
-import { AgentTurnError, completeText, httpStatusFromError, zeroUsage } from "./ai-invoke";
+import { AgentTurnError, completeText, formatModelError, zeroUsage } from "./ai-invoke";
 import type { ModelHandle } from "./ai-models";
 import {
   buildCompactionState, buildSummaryPrompt, chatChangeStatuses, COMPACTION_SYSTEM_PROMPT,
@@ -3509,9 +3509,10 @@ export async function runAgent(
 
   if (turnFailure) {
     // Other failures become an AgentTurnError carrying the failing request's HTTP status (when
-    // it can be determined) for the overseer's triage.
+    // it can be determined) for the overseer's triage; empty-bodied 429s get a clearer message.
+    const formatted = formatModelError(turnFailure.message, handle);
     throw new AgentTurnError(
-        turnFailure.message, httpStatusFromError(turnFailure.message, handle));
+        formatted.message, formatted.statusCode, formatted.aiGatewayLogId);
   }
 
   // The turn ran, so there is no checkpoint to report.

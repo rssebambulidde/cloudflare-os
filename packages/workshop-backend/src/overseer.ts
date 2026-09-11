@@ -7133,7 +7133,10 @@ class OverseerImpl implements AgentHooks {
       let errorMessage = stringifyError(err);
       if (apiError) {
         turnLogger.error("runAgent failed", {
-          event: "agent.run.failed", statusCode: apiError.statusCode, error: err,
+          event: "agent.run.failed",
+          statusCode: apiError.statusCode,
+          aiGatewayLogId: apiError.aiGatewayLogId,
+          error: err,
         });
       } else {
         turnLogger.error("runAgent failed", {

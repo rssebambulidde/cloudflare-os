@@ -8,7 +8,9 @@
 // Operates against a UserDurableObject stub so it can be called from the overseer (usage checks) and
 // from the RPC layer (status display).
 
+import { hasMinimumBalance } from "@gadgets/workshop-shared/limits";
 import { listAccounts, fetchCreditBalance } from "./account-service.js";
+import { getMinimumCloudflareBalance } from "../config.js";
 import type { UserDurableObject } from "../../user.js";
 
 // Treat a cached balance as fresh for this long.
@@ -71,7 +73,7 @@ async function getUsableAccessToken(userStub: UserStub): Promise<string | null> 
  * caller can derive BYOK routing without re-reading. Never throws; returns a safe default.
  */
 export async function resolveConnection(
-  _env: Cloudflare.Env, userStub: UserStub,
+  env: Cloudflare.Env, userStub: UserStub,
 ): Promise<ResolvedConnection> {
   try {
     // Dispose the connected-account stub at the end of this call (it's a returned RPC stub, not an
@@ -103,13 +105,21 @@ export async function resolveConnection(
     const base = { connected: true as const, accountId, accountName, needsAccountSelection };
     const extra = { accessToken, accountId };
 
-    // Serve a fresh cached balance without hitting the API.
+    // Serve a cached balance only when it is still fresh AND already meets the BYOK minimum.
+    // A null/low cache within the TTL (e.g. right after reconnect, or after a failed older API
+    // path) must not block a live re-read that would unlock a funded account.
+    const minimumBalance = getMinimumCloudflareBalance(env);
     const cacheAge = billing?.creditsUpdatedAt ? Date.now() - billing.creditsUpdatedAt : Infinity;
-    if (cacheAge < CREDITS_CACHE_TTL_MS && billing?.creditsRemaining !== undefined) {
-      return { status: { ...base, balance: billing.creditsRemaining ?? null }, ...extra };
+    const cachedBalance = billing?.creditsRemaining;
+    if (
+      cacheAge < CREDITS_CACHE_TTL_MS &&
+      cachedBalance !== undefined &&
+      hasMinimumBalance(cachedBalance, minimumBalance)
+    ) {
+      return { status: { ...base, balance: cachedBalance }, ...extra };
     }
 
-    let balance: number | null = billing?.creditsRemaining ?? null;
+    let balance: number | null = cachedBalance ?? null;
     if (accountId) {
       const fresh = await fetchCreditBalance(accessToken, accountId);
       if (fresh !== null) {

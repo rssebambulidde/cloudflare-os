@@ -5,6 +5,7 @@ import { createTracer } from "@gadgets/backend-utils/tracing";
 export type WorkshopObservabilityFields = {
   accountId: number;
   actionId: number | string;
+  aiGatewayLogId: string;
   autoProvisioned: boolean;
   blueprintId: string;
   callbackInitiated: boolean;

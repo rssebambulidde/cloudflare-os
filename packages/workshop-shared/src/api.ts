@@ -1268,19 +1268,23 @@ const SUGGESTED_MODEL_CATALOG = {
     "claude-sonnet-4-5": {name: "Claude Sonnet 4.5", contextWindow: 1000000, outputLimit: 64000},
   },
   "openai": {
+    // gpt-6-astra omitted: AI Gateway returns 401 (no OpenAI bearer) until UB covers it or
+    // an OpenAI provider key alias "default" is stored on gateway default.
     "gpt-5.6-sol": {name: "GPT 5.6 Sol", contextWindow: 1050000, outputLimit: 128000},
     "gpt-5.6-terra": {name: "GPT 5.6 Terra", contextWindow: 1050000, outputLimit: 128000},
     "gpt-5.6-luna": {name: "GPT 5.6 Luna", contextWindow: 1050000, outputLimit: 128000},
     "gpt-5.5": {name: "GPT 5.5", contextWindow: 272000, outputLimit: 128000},
     "gpt-5.4": {name: "GPT 5.4", contextWindow: 272000, outputLimit: 128000},
-    "gpt-5.4-mini": {name: "GPT 5.4 mini", contextWindow: 400000, outputLimit: 128000},
-    "gpt-5.4-nano": {name: "GPT 5.4 nano", contextWindow: 400000, outputLimit: 128000},
     "gpt-5.1": {name: "GPT 5.1", contextWindow: 400000, outputLimit: 128000},
-    "gpt-5-mini": {name: "GPT 5 Mini", contextWindow: 400000, outputLimit: 128000},
-    "gpt-5-nano": {name: "GPT 5 Nano", contextWindow: 400000, outputLimit: 128000},
   },
   "google": {
+    "gemini-3.8-flash": {name: "Gemini 3.8 Flash", contextWindow: 1048576},
+    // gemini-3.7-flash omitted: 403 unregistered callers on this account's Google/UB path;
+    // siblings work. Re-add after Google identity + model availability are confirmed.
     "gemini-3.6-flash": {name: "Gemini 3.6 Flash", contextWindow: 1048576},
+    "gemini-3.1-pro-preview": {name: "Gemini 3.1 Pro", contextWindow: 1048576},
+    "gemini-2.5-flash": {name: "Gemini 2.5 Flash", contextWindow: 1048576},
+    "gemini-2.5-pro": {name: "Gemini 2.5 Pro", contextWindow: 1048576},
   },
   "ollama": {
   },
